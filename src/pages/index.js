@@ -1,118 +1,255 @@
+import { supabase } from "@/utils/db/supabase";
 import Image from "next/image";
+import { useEffect, useState } from "react";
+import { Button } from "@nextui-org/react";
+import { IoArrowBack } from "react-icons/io5";
+import { setStep } from "@/stores/slices/stepSlice";
+import { Login } from "@/components/login";
+import { ProgramActions, UniversityActions } from "@/components/login/actions";
+import { Registration } from "@/components/login/registration";
 import { Inter } from "next/font/google";
+import { useDispatch, useSelector } from "react-redux";
+import { Redirection } from "@/components/login/registration/redirect";
+import { Confirm } from "@/components/login/registration/confirm";
+import { LogoLoading } from "@/components/loading/LogoLoading";
+import { useRouter } from "next/router";
+import { setLoading } from "@/stores/slices/loadingSlice";
+import { setLoginData } from "@/stores/slices/loginSlice";
+import alertModal from "@/utils/assistants/alertModal";
+import { Divider } from "@/components/utils/Divider";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export default function Home() {
+  const dispatch = useDispatch();
+  const { no, auth } = useSelector((state) => state.step);
+  const {
+    email,
+    id,
+    avatar,
+    name,
+    city,
+    university,
+    program,
+    age,
+    status,
+    phone,
+    address,
+  } = useSelector((state) => state.login);
+  const [session, setSession] = useState(null);
+  const router = useRouter();
+
+  const handleStudent = () => {
+    const max = 4;
+    dispatch(
+      setStep({
+        auth: "student",
+        no: max !== no ? no + 1 : max,
+      })
+    );
+  };
+
+  const handleAdmin = () => {
+    dispatch(setStep({ no: 1, auth: "admin" }));
+  };
+
+  const handleBack = () => {
+    const min = 0;
+    dispatch(
+      setStep({
+        auth: auth,
+        no: min !== no ? no - 1 : no,
+      })
+    );
+  };
+
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const { data: userSession, error } = await supabase.auth.session();
+        if (error) throw error;
+        setSession(userSession);
+
+        if (!userSession) {
+          dispatch(
+            setLoginData({
+              login: false,
+              auth: auth,
+              email,
+              id,
+              avatar,
+              name,
+              city,
+              university,
+              program,
+              age,
+              status,
+              phone,
+              address,
+            })
+          );
+        }
+      } catch (err) {
+        err.message === "Email rate limit exceeded" &&
+          alertModal({
+            toastIcon: "warning",
+            toastTitle:
+              "Çok fazla email isteği gönderdiğiniz için email limiti aşıldı, lütfen 5 dakika sonra tekrar deneyin",
+          });
+      } finally {
+        dispatch(setLoading({ loading: false }));
+      }
+    };
+
+    fetchSession();
+
+    const { data: authSubscription } = supabase.auth.onAuthStateChange(
+      (_event, userSession) => {
+        setSession(userSession);
+      }
+    );
+
+    return () => {
+      if (authSubscription && authSubscription.unsubscribe) {
+        authSubscription.unsubscribe();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (session) {
+      dispatch(
+        setLoginData({
+          login: true,
+          auth: auth,
+          email,
+          id,
+          avatar,
+          name,
+          city,
+          university,
+          program,
+          age,
+          status,
+          phone,
+          address,
+        })
+      );
+      router.push("/dashboard");
+    }
+  }, [session, router]);
+
   return (
-    <main
-      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
-    >
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/pages/index.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <main className={`w-full h-screen flex ${inter.className}`}>
+      <Divider />
+
+      <div className="relative flex-1 hidden items-center justify-center h-screen bg-transparent lg:flex">
+        <div className="relative  w-full max-w-lg z-20 p-20   rounded-3xl ">
+          <Image
+            src={"/edu-logo.png"}
+            width={125}
+            height={125}
+            alt="Olympos Edu Logo"
+            className=" brightness-0  -mt-8"
+          />
+          <div className="space-y-3">
+            <h3 className={`text-black text-4xl font-bold tracking-tight`}>
+              OLYMPOS <span className="text-rose-600">PORTAL</span>
+            </h3>
+            <p className="text-slate-800 tracking-tight">
+              Olympos Eğitim Danışmanlığı olarak, her adımda öğrencilerimizin
+              yanında olmayı ve onların geleceğe güvenle adım atmalarını
+              sağlamayı amaçlıyoruz.
+            </p>
+          </div>
         </div>
+        <div
+          className="w-full h-full object-cover inset-0 absolute bg-center bg-cover z-10 bg-black/90"
+          style={{ backgroundImage: "url('/indexbg.svg')" }}
+        ></div>
       </div>
+      <div className="flex flex-1 items-center justify-center min-h-screen bg-slate-950 text-white ">
+        {no !== 6 ? (
+          <div className="w-full h-full overflow-y-scroll mx-auto lg:max-w-xl max-w-lg flex flex-col items-center justify-center gap-3 p-4">
+            <div
+              className={`w-full ${inter.className} h-auto mx-auto lg:max-w-xl max-w-lg flex flex-col items-start justify-center gap-2 mb-4`}
+            >
+              {no !== 0 && (
+                <Button
+                  onPress={handleBack}
+                  color="default"
+                  variant="bordered"
+                  size="md"
+                  aria-label="Back Button"
+                  className="w-auto  dark my-8 "
+                >
+                  <IoArrowBack className=" w-6 h-6" />
+                </Button>
+              )}
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
+              <h3 className="lg:text-4xl text-2xl font-semibold tracking-tighter text-white flex items-center justify-center gap-2">
+                <span className="text-rose-600">OLYMPOS</span>{" "}
+                {no >= 2 ? "PORTAL KAYIT" : "PORTAL GİRİŞ"}
+              </h3>
+
+              <h2 className="lg:text-md text-sm text-slate-200 tracking-tight">
+                {no <= 2 &&
+                  "Email hesabınızı kullanarak tek seferde şifreye ihtiyaç olmadan giriş yapın!"}
+                {no === 3 &&
+                  "Lütfen sağa kaydırarak üniversite seçimini yapın."}
+                {no === 4 &&
+                  "Kayıdınızın tamamlanmasına çok az kaldı! Lütfen aşağıdan bölüm seçin."}
+                {no === 5 && (
+                  <span className="text-amber-200">
+                    Lütfen bilgilerinizi tekrar kontrol edin ve kayıt
+                    işlemlerini bitirin. Eğer bilgileriniz yanlış ise geri
+                    gelerek gerekli düzenlemeleri yapabilirsiniz.
+                  </span>
+                )}
+                {no === 2 && (
+                  <span className="text-amber-200 text-sm pl-2">
+                    Lütfen kayıt olurken geçerli email kullanın. Olymposedu
+                    olarak şifrelerinizin korurken sadece email kullanıyoruz.
+                    Hesabınıza sadece email yoluyla ulaşabildiğinizi unutmayın.
+                  </span>
+                )}
+              </h2>
+            </div>
+            {no === 0 && (
+              <>
+                <div
+                  className="bg-cover cursor-pointer bg-center mx-auto max-w-lg w-full h-1/5 flex items-center justify-center rounded-xl text-black "
+                  style={{
+                    backgroundImage: "url(/assets/button-student-bg.jpg)",
+                  }}
+                  onClick={handleStudent}
+                >
+                  <div className="w-full h-full bg-black/50 flex items-center justify-center rounded-xl hover:backdrop-brightness-90">
+                    <h2 className="text-3xl text-white tracking-tighter">
+                      ÖĞRENCİ GİRİŞ
+                    </h2>
+                  </div>
+                </div>
+                <Button
+                  color="danger"
+                  className="mx-auto  max-w-lg w-full h-1/5 text-white "
+                  onClick={handleAdmin}
+                >
+                  <h2 className="text-3xl tracking-tighter">YETKİLİ GİRİŞ</h2>
+                </Button>
+              </>
+            )}
+            {no === 1 && <Login />}
+            {no === 2 && <Registration />}
+            {no === 3 && <UniversityActions />}
+            {no === 4 && <ProgramActions />}
+            {no === 5 && <Confirm />}
+          </div>
+        ) : (
+          <Redirection />
+        )}
       </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
+      <LogoLoading h={75} w={75} />
     </main>
   );
 }
